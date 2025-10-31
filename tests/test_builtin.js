@@ -444,6 +444,18 @@ function test_number()
     assert((1.3).toString(35), "1.ahhhhhhhhhm");
 }
 
+function test_number_to_exponential_precision()
+{
+    assert((123.456).toExponential(100),
+           "1.2345600000000000306954461848363280296325683593750000000000000000000000000000000000000000000000000000e+2");
+    assert((1.23e-99).toExponential(100),
+           "1.2299999999999999636794326616259654935901564299639709630577493044757187515388707554223010856511630028e-99");
+    assert((-0.0007).toExponential(100),
+           "-6.9999999999999999288763374849509091291110962629318237304687500000000000000000000000000000000000000000e-4");
+    assert((0).toExponential(100),
+           "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e+0");
+}
+
 function test_eval2()
 {
     var g_call_count = 0;
@@ -1200,6 +1212,7 @@ test_array();
 test_string();
 test_math();
 test_number();
+test_number_to_exponential_precision();
 test_eval();
 test_typed_array();
 test_json();
