@@ -26658,6 +26658,7 @@ static __exception int js_parse_for_in_of(JSParseState *s, int label_name,
     int tok, tok1, opcode, scope, block_scope_level;
     int label_next, label_expr, label_cont, label_body, label_break;
     int pos_next, pos_expr;
+    int for_of_line_num, for_of_col_num; /* saved position for iterator_close */
     BlockEnv break_entry;
 
     has_initializer = false;
@@ -26809,6 +26810,11 @@ static __exception int js_parse_for_in_of(JSParseState *s, int label_name,
 
     if (js_parse_expect(s, ')'))
         return -1;
+    /* save the position after closing paren for iterator_close source location */
+    if (is_for_of) {
+        for_of_line_num = s->token.line_num;
+        for_of_col_num = s->token.col_num;
+    }
 
     {
         /* move the `next` code here */
@@ -26862,6 +26868,16 @@ static __exception int js_parse_for_in_of(JSParseState *s, int label_name,
 
     emit_label(s, label_break);
     if (is_for_of) {
+        /* emit source location for iterator_close using saved position */
+        {
+            int saved_line_num = s->token.line_num;
+            int saved_col_num = s->token.col_num;
+            s->token.line_num = for_of_line_num;
+            s->token.col_num = for_of_col_num;
+            emit_source_loc(s);
+            s->token.line_num = saved_line_num;
+            s->token.col_num = saved_col_num;
+        }
         /* close and drop enum_rec */
         emit_op(s, OP_iterator_close);
     } else {
