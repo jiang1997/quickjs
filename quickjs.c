@@ -10236,11 +10236,6 @@ retry:
         goto done;
     }
 
-    if (unlikely(!p->extensible)) {
-        ret = JS_ThrowTypeErrorOrFalse(ctx, flags, "object is not extensible");
-        goto done;
-    }
-
     if (p == JS_VALUE_GET_OBJ(obj)) {
         if (p->is_exotic) {
             if (p->class_id == JS_CLASS_ARRAY && p->fast_array &&
@@ -10248,11 +10243,19 @@ retry:
                 uint32_t idx = __JS_AtomToUInt32(prop);
                 if (idx == p->u.array.count) {
                     /* fast case */
+                    if (unlikely(!p->extensible)) {
+                        ret = JS_ThrowTypeErrorOrFalse(ctx, flags, "object is not extensible");
+                        goto done;
+                    }
                     return add_fast_array_element(ctx, p, val, flags);
                 }
             }
             goto generic_create_prop;
         } else {
+            if (unlikely(!p->extensible)) {
+                ret = JS_ThrowTypeErrorOrFalse(ctx, flags, "object is not extensible");
+                goto done;
+            }
             pr = add_property(ctx, p, prop, JS_PROP_C_W_E);
             if (!pr)
                 goto fail;
