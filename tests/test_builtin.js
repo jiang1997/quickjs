@@ -227,6 +227,40 @@ function test_enum()
     assert(tab, ["1","4294967294","x","18014398509481984","9007199254740992","9007199254740991","4294967296","4294967295","y"], "keys");
 }
 
+function test_non_extensible_array_set()
+{
+    var a;
+
+    a = [];
+    Object.preventExtensions(a);
+    assertThrows(TypeError, () => { a[2] = 1; });
+    assert(a.length, 0, "non-extensible array length after strict set");
+    assert(Object.keys(a), [], "non-extensible array keys after strict set");
+
+    a = [];
+    Object.preventExtensions(a);
+    assert(Reflect.set(a, "2", 1, a), false, "non-extensible array Reflect.set result");
+    assert(a.length, 0, "non-extensible array length after Reflect.set");
+    assert(Object.keys(a), [], "non-extensible array keys after Reflect.set");
+
+    var receiver;
+    class A {
+        constructor() {
+            receiver = Object.preventExtensions([]);
+            return receiver;
+        }
+    }
+    class B extends A {
+        constructor() {
+            super();
+            super[2] = 1;
+        }
+    }
+    assertThrows(TypeError, () => { new B(); });
+    assert(receiver.length, 0, "non-extensible array length after super set");
+    assert(Object.keys(receiver), [], "non-extensible array keys after super set");
+}
+
 function test_array()
 {
     var a, err;
@@ -1286,6 +1320,7 @@ function test_cur_pc()
 test();
 test_function();
 test_enum();
+test_non_extensible_array_set();
 test_array();
 test_string();
 test_rope();
