@@ -20083,6 +20083,7 @@ typedef struct BlockEnv {
     struct BlockEnv *prev;
     JSAtom label_name; /* JS_ATOM_NULL if none */
     int label_break; /* -1 if none */
+    int label_break_after; /* -1 if none */
     int label_cont; /* -1 if none */
     int drop_count; /* number of stack elements to drop */
     int label_finally; /* -1 if none */
@@ -26316,6 +26317,7 @@ static void push_break_entry(JSFunctionDef *fd, BlockEnv *be,
     fd->top_break = be;
     be->label_name = label_name;
     be->label_break = label_break;
+    be->label_break_after = -1;
     be->label_cont = label_cont;
     be->drop_count = drop_count;
     be->label_finally = -1;
@@ -26351,12 +26353,19 @@ static __exception int emit_break(JSParseState *s, JSAtom name, int is_cont)
         if (!is_cont && top->label_break != -1) {
             if (top->label_name == name ||
                 (name == JS_ATOM_NULL && !top->is_regular_stmt)) {
-                emit_goto(s, OP_goto, top->label_break);
+                if (top->has_iterator && top->label_break_after != -1) {
+                    emit_source_loc(s);
+                    emit_op(s, OP_iterator_close);
+                    emit_goto(s, OP_goto, top->label_break_after);
+                } else {
+                    emit_goto(s, OP_goto, top->label_break);
+                }
                 return 0;
             }
         }
         i = 0;
         if (top->has_iterator) {
+            emit_source_loc(s);
             emit_op(s, OP_iterator_close);
             i += 3;
         }
@@ -26433,6 +26442,7 @@ static void emit_return(JSParseState *s, bool hasval)
                 } else {
                     emit_op(s, OP_rot3r);
                     emit_op(s, OP_undefined); /* dummy catch offset */
+                    emit_source_loc(s);
                     emit_op(s, OP_iterator_close);
                 }
             } else {
@@ -26768,6 +26778,7 @@ static __exception int js_parse_for_in_of(JSParseState *s, int label_name,
     if (token_is_pseudo_keyword(s, JS_ATOM_of)) {
         is_for_of = true;
         break_entry.has_iterator = true;
+        break_entry.label_break_after = new_label(s);
         break_entry.drop_count += 2;
         if (has_initializer)
             goto initializer_error;
@@ -26864,6 +26875,7 @@ static __exception int js_parse_for_in_of(JSParseState *s, int label_name,
     if (is_for_of) {
         /* close and drop enum_rec */
         emit_op(s, OP_iterator_close);
+        emit_label(s, break_entry.label_break_after);
     } else {
         emit_op(s, OP_drop);
     }
